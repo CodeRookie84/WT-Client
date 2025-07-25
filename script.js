@@ -1,5 +1,5 @@
 // --- SETUP ---
-const SERVER_URL = "https://walkie-talkie-server-9yu3.onrender.com";
+const SERVER_URL = "https://wt-server-od9g.onrender.com";
 const socket = io(SERVER_URL);
 
 const statusElement = document.getElementById('status');
