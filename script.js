@@ -1,4 +1,4 @@
-// script.js - WITH THE RACE CONDITION FIX
+// script.js - WITH THE data is not defined FIX
 
 // --- CONFIGURATION ---
 const SERVER_URL = "https://wt-server-od9g.onrender.com";
@@ -84,11 +84,13 @@ async function initializeMediaRecorder() {
         mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
 
         mediaRecorder.onstop = () => {
-            // This now runs BEFORE the button state is cleared
             if (!activeRecordingButton) return; 
 
             const channel = activeRecordingButton.dataset.channel;
-            const audioBlob = new Blob([data.audioChunk]);
+            
+            // *** THE FIX IS HERE ***
+            // We must use the 'audioChunks' array, which has been collecting the recording.
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             
             if (audioBlob.size > 0) {
                 socket.emit('audio-message', {
@@ -99,8 +101,7 @@ async function initializeMediaRecorder() {
 
             audioChunks = [];
 
-            // *** FIX #1: The cleanup logic is MOVED HERE ***
-            // Now we clean up the button and state AFTER sending the audio
+            // Now that the function won't crash, this cleanup code will run
             if (activeRecordingButton) {
                 activeRecordingButton.classList.remove('recording');
                 activeRecordingButton.querySelector('i').className = 'fa-solid fa-microphone';
@@ -165,7 +166,6 @@ function stopRecording() {
     if (!isRecording) return;
     if (mediaRecorder.state === "recording") {
         mediaRecorder.stop();
-        // *** FIX #2: The cleanup logic is REMOVED FROM HERE ***
     }
 }
 
