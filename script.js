@@ -1,7 +1,7 @@
-// script.js
+// script.js - WITH ADDED DEBUG LOGS
 
 // --- CONFIGURATION ---
-const SERVER_URL = "https://wt-server-od9g.onrender.com"; // This is correct
+const SERVER_URL = "https://wt-server-od9g.onrender.com";
 const CHANNELS = ["General", "Project Alpha", "Emergency", "Music Room"];
 const STORAGE_KEY = 'walkie_talkie_channels';
 
@@ -17,6 +17,7 @@ let activeRecordingButton = null;
 
 // --- INITIALIZATION ---
 function initialize() {
+    console.log("[DEBUG] Initializing application...");
     populateChannels();
     setupSocketListeners();
     initializeMediaRecorder();
@@ -45,13 +46,16 @@ function populateChannels() {
     setupActionListeners();
 }
 
-// --- SOCKET.IO LISTENERS (MODIFIED) ---
+// --- SOCKET.IO LISTENERS ---
 function setupSocketListeners() {
     socket.on('connect', () => {
         statusTextElement.textContent = 'Connected';
         statusLightElement.className = 'status-light connected';
-        // When we connect, automatically join any channels we had active before
-        getSavedChannels().forEach(channel => socket.emit('join-channel', channel));
+        console.log(`[DEBUG] Connected to server. Socket ID: ${socket.id}`);
+        getSavedChannels().forEach(channel => {
+            console.log(`[DEBUG] Auto-joining channel: ${channel}`);
+            socket.emit('join-channel', channel);
+        });
     });
 
     socket.on('disconnect', () => {
@@ -60,14 +64,12 @@ function setupSocketListeners() {
         if (isRecording) stopRecording(); 
     });
 
-    // The server now sends the 'data' object back
     socket.on('audio-message-from-server', (data) => {
+        console.log(`[DEBUG] Received audio from server for channel ${data.channel}.`);
         const audioBlob = new Blob([data.audioChunk]);
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
         audio.play();
-
-        // Visually indicate which channel is receiving audio
         const channelItem = document.getElementById(`channel-${data.channel}`);
         if(channelItem) {
             channelItem.classList.add('receiving');
@@ -80,30 +82,44 @@ function setupSocketListeners() {
     });
 }
 
-// --- MEDIA RECORDER LOGIC (MODIFIED) ---
+// --- MEDIA RECORDER LOGIC ---
 async function initializeMediaRecorder() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream);
-        mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+        console.log("[DEBUG] MediaRecorder initialized successfully.");
 
-        // When we stop recording, send the data as an OBJECT
+        mediaRecorder.ondataavailable = event => {
+            audioChunks.push(event.data);
+        };
+
+        // THIS IS THE MOST IMPORTANT PART TO DEBUG
         mediaRecorder.onstop = () => {
-            if (!activeRecordingButton) return;
+            console.log("[DEBUG] mediaRecorder.onstop event fired.");
+            if (!activeRecordingButton) {
+                console.error("[DEBUG] onstop fired, but no activeRecordingButton was set!");
+                return;
+            }
 
             const channel = activeRecordingButton.dataset.channel;
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             
-            // This is the key change: we emit an object with the channel and the audio
-            socket.emit('audio-message', {
-                channel: channel,
-                audioChunk: audioBlob
-            });
+            console.log(`[DEBUG] Audio Blob created. Size: ${audioBlob.size} bytes. Channel: ${channel}`);
+
+            if (audioBlob.size > 0) {
+                console.log("[DEBUG] SUCCESS: Emitting 'audio-message' to server.");
+                socket.emit('audio-message', {
+                    channel: channel,
+                    audioChunk: audioBlob
+                });
+            } else {
+                console.error("[DEBUG] ERROR: Audio Blob is empty. Not sending.");
+            }
 
             audioChunks = [];
         };
     } catch (error) {
-        console.error("Error accessing microphone:", error);
+        console.error("[DEBUG] FAILED to get microphone:", error);
         statusTextElement.textContent = 'Microphone access denied.';
     }
 }
@@ -131,11 +147,13 @@ function handleChannelToggle(toggle) {
     const talkButton = channelItem.querySelector('.talk-button');
 
     if (toggle.checked) {
-        socket.emit('join-channel', channel); // Tell server we're joining
+        console.log(`[DEBUG] Emitting 'join-channel' for ${channel}`);
+        socket.emit('join-channel', channel);
         talkButton.disabled = false;
         channelItem.classList.add('active');
     } else {
-        socket.emit('leave-channel', channel); // Tell server we're leaving
+        console.log(`[DEBUG] Emitting 'leave-channel' for ${channel}`);
+        socket.emit('leave-channel', channel);
         talkButton.disabled = true;
         channelItem.classList.remove('active');
         if (isRecording && activeRecordingButton === talkButton) {
@@ -147,6 +165,7 @@ function handleChannelToggle(toggle) {
 
 function startRecording(button) {
     if (isRecording || !mediaRecorder || button.disabled) return;
+    console.log("[DEBUG] startRecording called.");
     isRecording = true;
     activeRecordingButton = button;
     mediaRecorder.start();
@@ -156,7 +175,9 @@ function startRecording(button) {
 
 function stopRecording() {
     if (!isRecording) return;
+    console.log("[DEBUG] stopRecording called.");
     if (mediaRecorder.state === "recording") {
+        console.log("[DEBUG] Calling mediaRecorder.stop().");
         mediaRecorder.stop();
     }
     if (activeRecordingButton) {
@@ -167,7 +188,6 @@ function stopRecording() {
     activeRecordingButton = null;
 }
 
-// Helper functions to remember which channels were active
 function saveActiveChannels() {
     const activeChannels = Array.from(document.querySelectorAll('.channel-toggle:checked'))
                                 .map(toggle => toggle.dataset.channel);
@@ -179,5 +199,4 @@ function getSavedChannels() {
     return saved ? JSON.parse(saved) : [];
 }
 
-// Start the app
 initialize();
