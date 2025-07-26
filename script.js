@@ -1,4 +1,4 @@
-// script.js - FINAL STABLE VERSION
+// script.js - WITH TAP-TO-TOGGLE MICROPHONE
 
 // --- CONFIGURATION ---
 const SERVER_URL = "https://wt-server-od9g.onrender.com";
@@ -42,10 +42,11 @@ function populateChannels() {
         `;
         channelsListElement.appendChild(item);
     });
+    // This function below is the only one we are changing
     setupActionListeners();
 }
 
-// --- SOCKET.IO LISTENERS ---
+// --- SOCKET.IO LISTENERS (UNCHANGED) ---
 function setupSocketListeners() {
     socket.on('connect', () => {
         statusTextElement.textContent = 'Connected';
@@ -59,14 +60,10 @@ function setupSocketListeners() {
         if (isRecording) stopRecording(); 
     });
 
-    // This is the client-side echo prevention.
     socket.on('audio-message-from-server', (data) => {
-        // If the message is from me, do nothing.
         if (data.senderId === socket.id) {
             return; 
         }
-
-        // If the message is from someone else, play the audio.
         const audioBlob = new Blob([data.audioChunk]);
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
@@ -83,7 +80,7 @@ function setupSocketListeners() {
     });
 }
 
-// --- MEDIA RECORDER LOGIC ---
+// --- MEDIA RECORDER LOGIC (UNCHANGED) ---
 async function initializeMediaRecorder() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -119,22 +116,48 @@ async function initializeMediaRecorder() {
 }
 
 
-// --- EVENT LISTENERS AND HELPERS ---
+// --- *** THE ONLY SECTION WITH CHANGES *** ---
+
+// We create a new handler function for the button logic
+function handleTalkButtonClick(button) {
+    // If we are already recording...
+    if (isRecording) {
+        // ...and the button we clicked is the SAME one that's active...
+        if (button === activeRecordingButton) {
+            // ...then stop the recording.
+            stopRecording();
+        } else {
+            // Otherwise, do nothing. This prevents starting a new recording while another is active.
+            console.warn("Another channel is active. Please stop it first.");
+        }
+    } else {
+        // If we are NOT recording, start a new one.
+        if (!button.disabled) {
+            startRecording(button);
+        }
+    }
+}
+
+// We replace the old mousedown/mouseup/touchstart/touchend listeners with a single 'click' listener.
 function setupActionListeners() {
+    // Listen for channel toggles (no change here)
     channelsListElement.addEventListener('change', e => {
         if (e.target.classList.contains('channel-toggle')) handleChannelToggle(e.target);
     });
-    channelsListElement.addEventListener('mousedown', e => {
+
+    // A single click listener for the talk buttons
+    channelsListElement.addEventListener('click', e => {
         const button = e.target.closest('.talk-button');
-        if (button) startRecording(button);
+        if (button) {
+            handleTalkButtonClick(button);
+        }
     });
-    channelsListElement.addEventListener('touchstart', e => {
-         const button = e.target.closest('.talk-button');
-         if(button) { e.preventDefault(); startRecording(button); }
-    });
-    window.addEventListener('mouseup', stopRecording);
-    window.addEventListener('touchend', stopRecording);
 }
+
+// --- END OF CHANGED SECTION ---
+
+
+// --- HELPER FUNCTIONS (UNCHANGED) ---
 
 function handleChannelToggle(toggle) {
     const channel = toggle.dataset.channel;
@@ -149,6 +172,7 @@ function handleChannelToggle(toggle) {
         socket.emit('leave-channel', channel);
         talkButton.disabled = true;
         channelItem.classList.remove('active');
+        // If we are recording on the channel we just disabled, stop it.
         if (isRecording && activeRecordingButton === talkButton) {
             stopRecording();
         }
