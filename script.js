@@ -1,4 +1,4 @@
-// script.js - WITH ADDED DEBUG LOGS
+// script.js - WITH THE RACE CONDITION FIX
 
 // --- CONFIGURATION ---
 const SERVER_URL = "https://wt-server-od9g.onrender.com";
@@ -17,7 +17,6 @@ let activeRecordingButton = null;
 
 // --- INITIALIZATION ---
 function initialize() {
-    console.log("[DEBUG] Initializing application...");
     populateChannels();
     setupSocketListeners();
     initializeMediaRecorder();
@@ -51,11 +50,7 @@ function setupSocketListeners() {
     socket.on('connect', () => {
         statusTextElement.textContent = 'Connected';
         statusLightElement.className = 'status-light connected';
-        console.log(`[DEBUG] Connected to server. Socket ID: ${socket.id}`);
-        getSavedChannels().forEach(channel => {
-            console.log(`[DEBUG] Auto-joining channel: ${channel}`);
-            socket.emit('join-channel', channel);
-        });
+        getSavedChannels().forEach(channel => socket.emit('join-channel', channel));
     });
 
     socket.on('disconnect', () => {
@@ -65,7 +60,6 @@ function setupSocketListeners() {
     });
 
     socket.on('audio-message-from-server', (data) => {
-        console.log(`[DEBUG] Received audio from server for channel ${data.channel}.`);
         const audioBlob = new Blob([data.audioChunk]);
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
@@ -82,47 +76,44 @@ function setupSocketListeners() {
     });
 }
 
-// --- MEDIA RECORDER LOGIC ---
+// --- MEDIA RECORDER LOGIC (FIXED) ---
 async function initializeMediaRecorder() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream);
-        console.log("[DEBUG] MediaRecorder initialized successfully.");
+        mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
 
-        mediaRecorder.ondataavailable = event => {
-            audioChunks.push(event.data);
-        };
-
-        // THIS IS THE MOST IMPORTANT PART TO DEBUG
         mediaRecorder.onstop = () => {
-            console.log("[DEBUG] mediaRecorder.onstop event fired.");
-            if (!activeRecordingButton) {
-                console.error("[DEBUG] onstop fired, but no activeRecordingButton was set!");
-                return;
-            }
+            // This now runs BEFORE the button state is cleared
+            if (!activeRecordingButton) return; 
 
             const channel = activeRecordingButton.dataset.channel;
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const audioBlob = new Blob([data.audioChunk]);
             
-            console.log(`[DEBUG] Audio Blob created. Size: ${audioBlob.size} bytes. Channel: ${channel}`);
-
             if (audioBlob.size > 0) {
-                console.log("[DEBUG] SUCCESS: Emitting 'audio-message' to server.");
                 socket.emit('audio-message', {
                     channel: channel,
                     audioChunk: audioBlob
                 });
-            } else {
-                console.error("[DEBUG] ERROR: Audio Blob is empty. Not sending.");
             }
 
             audioChunks = [];
+
+            // *** FIX #1: The cleanup logic is MOVED HERE ***
+            // Now we clean up the button and state AFTER sending the audio
+            if (activeRecordingButton) {
+                activeRecordingButton.classList.remove('recording');
+                activeRecordingButton.querySelector('i').className = 'fa-solid fa-microphone';
+            }
+            isRecording = false;
+            activeRecordingButton = null;
         };
     } catch (error) {
-        console.error("[DEBUG] FAILED to get microphone:", error);
+        console.error("Error accessing microphone:", error);
         statusTextElement.textContent = 'Microphone access denied.';
     }
 }
+
 
 // --- EVENT LISTENERS AND HELPERS ---
 function setupActionListeners() {
@@ -147,12 +138,10 @@ function handleChannelToggle(toggle) {
     const talkButton = channelItem.querySelector('.talk-button');
 
     if (toggle.checked) {
-        console.log(`[DEBUG] Emitting 'join-channel' for ${channel}`);
         socket.emit('join-channel', channel);
         talkButton.disabled = false;
         channelItem.classList.add('active');
     } else {
-        console.log(`[DEBUG] Emitting 'leave-channel' for ${channel}`);
         socket.emit('leave-channel', channel);
         talkButton.disabled = true;
         channelItem.classList.remove('active');
@@ -165,7 +154,6 @@ function handleChannelToggle(toggle) {
 
 function startRecording(button) {
     if (isRecording || !mediaRecorder || button.disabled) return;
-    console.log("[DEBUG] startRecording called.");
     isRecording = true;
     activeRecordingButton = button;
     mediaRecorder.start();
@@ -175,17 +163,10 @@ function startRecording(button) {
 
 function stopRecording() {
     if (!isRecording) return;
-    console.log("[DEBUG] stopRecording called.");
     if (mediaRecorder.state === "recording") {
-        console.log("[DEBUG] Calling mediaRecorder.stop().");
         mediaRecorder.stop();
+        // *** FIX #2: The cleanup logic is REMOVED FROM HERE ***
     }
-    if (activeRecordingButton) {
-        activeRecordingButton.classList.remove('recording');
-        activeRecordingButton.querySelector('i').className = 'fa-solid fa-microphone';
-    }
-    isRecording = false;
-    activeRecordingButton = null;
 }
 
 function saveActiveChannels() {
