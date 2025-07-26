@@ -1,4 +1,4 @@
-// script.js - WITH THE data is not defined FIX
+// script.js - FINAL CORRECTED VERSION
 
 // --- CONFIGURATION ---
 const SERVER_URL = "https://wt-server-od9g.onrender.com";
@@ -59,7 +59,14 @@ function setupSocketListeners() {
         if (isRecording) stopRecording(); 
     });
 
+    // *** THE FIX IS HERE ***
     socket.on('audio-message-from-server', (data) => {
+        // Check if the message's senderId is the same as our own socket id.
+        // If it is, we are the sender, so we do nothing to prevent echo.
+        if (data.senderId === socket.id) {
+            return; 
+        }
+
         const audioBlob = new Blob([data.audioChunk]);
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
@@ -76,7 +83,7 @@ function setupSocketListeners() {
     });
 }
 
-// --- MEDIA RECORDER LOGIC (FIXED) ---
+// --- MEDIA RECORDER LOGIC ---
 async function initializeMediaRecorder() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -87,9 +94,6 @@ async function initializeMediaRecorder() {
             if (!activeRecordingButton) return; 
 
             const channel = activeRecordingButton.dataset.channel;
-            
-            // *** THE FIX IS HERE ***
-            // We must use the 'audioChunks' array, which has been collecting the recording.
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             
             if (audioBlob.size > 0) {
@@ -101,7 +105,6 @@ async function initializeMediaRecorder() {
 
             audioChunks = [];
 
-            // Now that the function won't crash, this cleanup code will run
             if (activeRecordingButton) {
                 activeRecordingButton.classList.remove('recording');
                 activeRecordingButton.querySelector('i').className = 'fa-solid fa-microphone';
