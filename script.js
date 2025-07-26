@@ -1,4 +1,4 @@
-// script.js - CLEANED UP VERSION
+// script.js - FINAL STABLE VERSION
 
 // --- CONFIGURATION ---
 const SERVER_URL = "https://wt-server-od9g.onrender.com";
@@ -59,8 +59,14 @@ function setupSocketListeners() {
         if (isRecording) stopRecording(); 
     });
 
-    // The senderId check is no longer needed because the server handles it.
+    // This is the client-side echo prevention.
     socket.on('audio-message-from-server', (data) => {
+        // If the message is from me, do nothing.
+        if (data.senderId === socket.id) {
+            return; 
+        }
+
+        // If the message is from someone else, play the audio.
         const audioBlob = new Blob([data.audioChunk]);
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
