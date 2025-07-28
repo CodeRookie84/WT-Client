@@ -1,17 +1,24 @@
-<!-- index.html -->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Walkie Talkie Channels</title>
+    
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <!-- You will also need a style.css file for this to look right -->
-    <link rel="stylesheet" href="style.css"> 
+    
+    <!-- Your custom stylesheet -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- *** THE CRITICAL FIX: Link to the PWA Manifest *** -->
+    <link rel="manifest" href="manifest.json">
+
 </head>
 <body>
 
@@ -26,11 +33,15 @@
     <main class="container">
         <p class="instructions">Toggle a channel on to listen. Press the mic to talk.</p>
         <ul id="channels-list" class="channels-list">
-            <!-- Channels will be populated by JavaScript -->
+            <!-- Channels will be added here by JavaScript -->
         </ul>
     </main>
 
+    <!-- Socket.IO library -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    
+    <!-- Your custom application script -->
     <script src="script.js"></script>
+
 </body>
 </html>
