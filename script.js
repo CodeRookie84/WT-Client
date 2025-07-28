@@ -1,5 +1,18 @@
 // script.js - WITH TAP-TO-TOGGLE MICROPHONE
 
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(registration => {
+      console.log('ServiceWorker registration successful with scope: ', registration.scope);
+    }, err => {
+      console.log('ServiceWorker registration failed: ', err);
+    });
+  });
+}
+
+// --- CONFIGURATION ---
+const SERVER_URL = "https://wt-server-od9g.onrender.com";
+// ... rest of your script.js file
 // --- CONFIGURATION ---
 const SERVER_URL = "https://wt-server-od9g.onrender.com";
 const CHANNELS = ["Cakewala 1", "Cakewala 2", "Cakewala 3", "Cakewala 4"];
