@@ -13,7 +13,7 @@ if ('serviceWorker' in navigator) {
 
 // --- CONFIGURATION ---
 const SERVER_URL = "https://wt-server-od9g.onrender.com";
-const CHANNELS = ["General", "Project Alpha", "Emergency", "Music Room"];
+const CHANNELS = ["Cakewala 1", "Cakewala 2", "Cakewala 3", "Cakewala 4"];
 const STORAGE_KEY = 'walkie_talkie_channels';
 
 // --- DOM ELEMENTS & STATE ---
