@@ -12,9 +12,6 @@ if ('serviceWorker' in navigator) {
 
 // --- CONFIGURATION ---
 const SERVER_URL = "https://wt-server-od9g.onrender.com";
-// ... rest of your script.js file
-// --- CONFIGURATION ---
-const SERVER_URL = "https://wt-server-od9g.onrender.com";
 const CHANNELS = ["Cakewala 1", "Cakewala 2", "Cakewala 3", "Cakewala 4"];
 const STORAGE_KEY = 'walkie_talkie_channels';
 
